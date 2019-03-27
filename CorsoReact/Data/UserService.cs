@@ -1,4 +1,5 @@
 ﻿using CorsoReact.Models;
+using Microsoft.Extensions.Caching.Memory;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -10,24 +11,31 @@ namespace CorsoReact.Data
     {
         User CheckUtente(string username, string password);
         User GetUtente(string id);
+        IEnumerable<User> GetUtenti(string id);
     }
     public class UserService : IUserService
     {
-        private List<User> _users = new List<User>
+        IDbUtente dbUtente;
+        public UserService(IDbUtente dbUtente)
         {
-            new User { Username = "pio@gmail.com", Password = "treglia" },
-            new User { Username = "daniele@gmail.com", Password = "esposito" },
-            new User { Username = "daniele@gmail.com", Password = "sisto" },
-        };
+            this.dbUtente = dbUtente;
+        }
+
+       
 
         public User CheckUtente(string username, string password)
         {
-            return this._users.FirstOrDefault(i => i.Username == username && i.Password == password);
+            return this.dbUtente.GetUsers().FirstOrDefault(i => i.Username == username && i.Password == password);
         }
 
-        public User GetUtente(string id)
+        public User GetUtente(string param)
         {
-            return this._users.FirstOrDefault(i => i.Id == id);
+            return this.dbUtente.GetUsers().FirstOrDefault(i => i.Id == param || i.Username == param);
+        }
+
+        public IEnumerable<User> GetUtenti(string id)
+        {
+            return this.dbUtente.GetUsers().Where(i => i.Id != id);
         }
     }
 }

@@ -10,6 +10,7 @@ using CorsoReact.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 
@@ -21,11 +22,14 @@ namespace CorsoReact.Controllers
     {
         private IUserService _userService;
         private IConfiguration _configuration;
-        public LoginController(IUserService userService,IConfiguration configuration)
+        private IDbUtente dbUtente;
+        public LoginController(IUserService userService,IConfiguration configuration, IDbUtente dbUtente)
         {
             this._userService = userService;
             this._configuration = configuration;
+            this.dbUtente = dbUtente;
         }
+
         [AllowAnonymous]
         [HttpGet]
         public ActionResult<string> Get()
@@ -57,8 +61,6 @@ namespace CorsoReact.Controllers
             user.Token = tokenHandler.WriteToken(token);
 
             return Ok(new User { Username = user.Username, Token = user.Token });
-
-      
         }
     }
 }

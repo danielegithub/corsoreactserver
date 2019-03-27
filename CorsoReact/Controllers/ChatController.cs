@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Claims;
 using System.Threading.Tasks;
 using CorsoReact.Data;
 using CorsoReact.Models;
@@ -11,23 +12,24 @@ using Microsoft.Extensions.Caching.Memory;
 
 namespace CorsoReact.Controllers
 {
+        [Authorize]
     [Route("api/[controller]")]
     [ApiController]
     public class ChatController : ControllerBase
     {
         IUserService _userService;
-        IMemoryCache conversazioni;
-        public ChatController(IUserService userService, IMemoryCache cache)
+        IDbConversazioni conversazioni;
+        public ChatController(IUserService userService, IDbConversazioni conversazioni)
         {
-            this.conversazioni = cache;
             this._userService = userService;
+            this.conversazioni = conversazioni;
         }
 
-        [Authorize]
         [HttpGet]
-        public ActionResult<Conversazione> Get([FromBody] string idconversazione)
+        public ActionResult<Conversazione> Get(string idconversazione)
         {
-            var conversazione = this.conversazioni.Get<Conversazione>(idconversazione);
+
+            var conversazione = this.conversazioni.GetConversazione(idconversazione);
             if (conversazione == null)
             return BadRequest("Attenzione conversazione inesistente");
             else
@@ -36,43 +38,36 @@ namespace CorsoReact.Controllers
             }
         }
 
-        [Authorize]
         [HttpPut]
-        public ActionResult<Conversazione> Put([FromBody] string idconversazione, string iduser, string testo)
+        public ActionResult<Conversazione> Put(string idconversazione, string iduser, string testo)
         {
-            var conversazione = this.conversazioni.Get<Conversazione>(idconversazione);
-            if (conversazione == null)
-                return BadRequest("Attenzione conversazione inesistente");
-            else
-            {
-                return Ok(conversazione);
-            }
+            var userFrom = this._userService.GetUtente(User.FindFirst(ClaimTypes.NameIdentifier).Value);
+            var userTo = this._userService.GetUtente(iduser);
+            var messaggio = new Messaggio();
+            messaggio.IdConversazione = idconversazione;
+            messaggio.UserFrom = userFrom;
+            messaggio.UserTo = userTo;
+            messaggio.Testo = testo;
+            this.conversazioni.AddMessaggio(idconversazione, messaggio);
+            return Ok();
         }
 
-        [Authorize]
         [HttpPost]
-        public ActionResult<string> Post([FromBody] string iduser,string testo)
+        public ActionResult<string> Post(string username,string testo)
         {
-            var userTo = this._userService.GetUtente(iduser);
-            var userFrom = this._userService.GetUtente(User.FindFirst("NameIdentifier")?.Value);
+            var userFrom = this._userService.GetUtente(User.FindFirst(ClaimTypes.NameIdentifier).Value);
+            var userTo = this._userService.GetUtente(username);
 
             if (userTo == null)
             {
                 return BadRequest("Attenzione utente To inesistente");
             }
 
-
             if (userFrom == null)
             {
                 return BadRequest("Attenzione utente To inesistente");
             }
-
-            var conversazione = new Conversazione();
-            this.conversazioni.GetOrCreate(conversazione.IdConversazione, nuova =>
-            {
-                nuova.SlidingExpiration = TimeSpan.FromHours(10);
-                return conversazione;
-            });
+            var conversazione = this.conversazioni.AddConversazione();
             var messaggio = new Messaggio();
             messaggio.IdConversazione = conversazione.IdConversazione;
             messaggio.Testo = testo;
